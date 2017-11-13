@@ -25,7 +25,7 @@ class ClassFinderTest extends TestCase
      * @var string
      */
     protected static $baseDir;
-    
+
     /**
      * @var IClassFinder
      */
@@ -34,53 +34,53 @@ class ClassFinderTest extends TestCase
     public static function setUpBeforeClass()
     {
         self::$baseDir = realpath(__DIR__.'/..');
-        
+
         self::$finder = new ClassFinder
         (
             require(self::$baseDir.'/vendor/autoload.php')
         );
     }
-    
+
     public function testFindTheClassFinder()
     {
         $this->assertArraySubset
         (
             [self::$baseDir.'/src/ClassFinder.php' => 'Gears\ClassFinder'],
-            self::$finder->namespace('Gears')->search()
+            self::$finder->setNamespace('Gears')->search()
         );
     }
-    
+
     public function testInterfaceFilter()
     {
         $this->assertSame
         (
             [self::$baseDir.'/src/ClassFinder.php' => 'Gears\ClassFinder'],
-            self::$finder->namespace('Gears')->implements(IClassFinder::class)->search()
+            self::$finder->setNamespace('Gears')->addImplements(IClassFinder::class)->search()
         );
     }
-    
+
     public function testExtendsFilter()
     {
         $this->assertSame
         (
             [self::$baseDir.'/vendor/gears/string/src/Str.php' => 'Gears\String\Str'],
-            self::$finder->namespace('Gears')->extends(Base::class)->search()
+            self::$finder->setNamespace('Gears')->addExtends(Base::class)->search()
         );
     }
-    
+
     public function testIterator()
     {
-        $this->assertInstanceOf(Traversable::class, self::$finder->namespace('Gears')->getIterator());
-        
-        foreach (self::$finder->namespace('Gears') as $filepath => $fqcn)
+        $this->assertInstanceOf(Traversable::class, self::$finder->setNamespace('Gears')->getIterator());
+
+        foreach (self::$finder->setNamespace('Gears') as $filepath => $fqcn)
         {
             $this->assertFileExists($filepath);
             $this->assertTrue(class_exists($fqcn));
         }
     }
-    
+
     public function testCount()
     {
-        $this->assertEquals(1, self::$finder->namespace('Gears')->implements(IClassFinder::class)->count());
+        $this->assertEquals(1, self::$finder->setNamespace('Gears')->addImplements(IClassFinder::class)->count());
     }
 }

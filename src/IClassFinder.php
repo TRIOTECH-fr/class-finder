@@ -1,4 +1,4 @@
-<?php declare(strict_types=1);
+<?php
 ////////////////////////////////////////////////////////////////////////////////
 // __________ __             ________                   __________
 // \______   \  |__ ______  /  _____/  ____ _____ ______\______   \ _______  ___
@@ -21,41 +21,41 @@ interface IClassFinder extends IteratorAggregate, Countable
 {
     /**
      * Namespace setter.
-     * 
+     *
      * @param  string       $namespace The namespace to find classes inside of.
      * @return IClassFinder            You may method chain.
      */
-    public function namespace(string $namespace): IClassFinder;
-    
+    public function setNamespace($namespace);
+
     /**
      * Interface setter.
      *
      * @param  string       $interface The interface name to filter classes by.
      * @return IClassFinder            You may method chain.
      */
-    public function implements(string $interface): IClassFinder;
-    
+    public function addImplements($interface);
+
     /**
      * Parent setter.
-     * 
+     *
      * @param  string       $parent A parent class to filter by.
      * @return IClassFinder         You may method chain.
      */
-    public function extends(string $parent): IClassFinder;
-    
+    public function addExtends($parent);
+
     /**
      * Custom filter method setter.
-     * 
+     *
      * @param  Closure      $filter A custom filter method to use instead
      *                              of our `defaultFilter`.
      * @return IClassFinder         You may method chain.
      */
-    public function filterBy(Closure $filter): IClassFinder;
-    
+    public function filterBy(Closure $filter);
+
     /**
      * Once you have set the search parameters, call this to actually search.
-     * 
+     *
      * @return array An array of found class names.
      */
-    public function search(): array;
+    public function search();
 }

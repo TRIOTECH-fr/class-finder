@@ -1,4 +1,4 @@
-<?php declare(strict_types=1);
+<?php
 ////////////////////////////////////////////////////////////////////////////////
 // __________ __             ________                   __________
 // \______   \  |__ ______  /  _____/  ____ _____ ______\______   \ _______  ___
@@ -13,14 +13,13 @@
 
 namespace Gears;
 
-use Closure;
-use Exception;
-use Traversable;
 use ArrayIterator;
+use Closure;
+use Composer\Autoload\ClassLoader;
+use Exception;
+use Gears\String\Str;
 use ReflectionClass;
 use ReflectionException;
-use Gears\String\Str;
-use Composer\Autoload\ClassLoader;
 use Symfony\Component\Finder\Finder;
 use Symfony\Component\Finder\SplFileInfo;
 
@@ -28,7 +27,7 @@ class ClassFinder implements IClassFinder
 {
     /**
      * The composer class loader as returned from `vendor/autoload.php`.
-     * 
+     *
      * @var ClassLoader
      */
     protected $composer;
@@ -36,7 +35,7 @@ class ClassFinder implements IClassFinder
     /**
      * This will be filled with fully qualified class names as they are found
      * by searching through the various class maps provided by composer.
-     * 
+     *
      * @var array|string[]
      */
     protected $foundClasses = [];
@@ -46,36 +45,36 @@ class ClassFinder implements IClassFinder
      *
      * > NOTE: This must be set, otherwise we could have a
      *         very large data set to search through.
-     * 
+     *
      * @var string
      */
     protected $namespace;
 
     /**
-     * The interface name to filter by will be stored here.
-     * 
-     * @var string
+     * The interface names to filter by will be stored here.
+     *
+     * @var array|string[]
      */
-    protected $implements;
+    protected $implements = [];
 
     /**
-     * The parent class to filter by will be stored here.
-     * 
-     * @var string
+     * The parent classes to filter by will be stored here.
+     *
+     * @var array|string[]
      */
-    protected $extends;
+    protected $extends = [];
 
     /**
      * An optional custom filter method can be set.
      * Otherwise we will use the `defaultFilter` method in this class.
-     * 
+     *
      * @var Closure
      */
     protected $filter;
-    
+
     /**
      * Constructor.
-     * 
+     *
      * @param ClassLoader $composer We rely on the information provided by the
      *                              composer class maps in order to find classes
      *                              for you.
@@ -84,95 +83,105 @@ class ClassFinder implements IClassFinder
     {
         $this->composer = $composer;
     }
-    
-    public function namespace(string $namespace): IClassFinder
+
+    /** @inheritdoc */
+    public function setNamespace($namespace)
     {
-        $this->namespace = $namespace; return $this;
+        $this->namespace = $namespace;
+
+        return $this;
     }
-    
-    public function implements(string $interface): IClassFinder
+
+    /** @inheritdoc */
+    public function addImplements($interface)
     {
-        $this->implements = $interface; return $this;
+        $this->implements[] = $interface;
+
+        return $this;
     }
-    
-    public function extends(string $parent): IClassFinder
+
+    /** @inheritdoc */
+    public function addExtends($parent)
     {
-        $this->extends = $parent; return $this;
+        $this->extends[] = $parent;
+
+        return $this;
     }
-    
-    public function filterBy(Closure $filter): IClassFinder
+
+    /** @inheritdoc */
+    public function filterBy(Closure $filter)
     {
-        if ($this->implements !== null || $this->extends != null)
-        {
+        if (!empty($this->implements) || !empty($this->extends)) {
             throw new Exception
             (
-                'Can not set a custom filter and filter '.
+                'Can not set a custom filter and filter ' .
                 'by `implements` or `extends`!'
             );
         }
 
-        $this->filter = $filter; return $this;
+        $this->filter = $filter;
+
+        return $this;
     }
-    
-    public function search(): array
+
+    /** @inheritdoc */
+    public function search()
     {
         $this->foundClasses = [];
-        
-        if ($this->namespace === null)
-        {
+
+        if ($this->namespace === null) {
             throw new Exception('Namespace must be set!');
         }
 
         $this->searchClassMap();
         $this->searchPsrMaps();
         $this->runFilter();
-        
+
         $this->namespace = null;
-        $this->implements = null;
-        $this->extends = null;
+        $this->implements = [];
+        $this->extends = [];
 
         return $this->foundClasses;
     }
-    
-    public function getIterator(): Traversable
+
+    /** @inheritdoc */
+    public function getIterator()
     {
         return new ArrayIterator($this->search());
     }
-    
-    public function count(): int
+
+    /** @inheritdoc */
+    public function count()
     {
         return iterator_count($this->getIterator());
     }
-    
+
     /**
      * Searches the composer class map.
      *
      * Results are added to the `$foundClasses` array.
-     * 
+     *
      * @return void
      */
     protected function searchClassMap()
     {
-        foreach ($this->composer->getClassMap() as $fqcn => $file)
-        {
-            if (Str::s($fqcn)->is($this->namespace.'*'))
-            {
+        foreach ($this->composer->getClassMap() as $fqcn => $file) {
+            if (Str::s($fqcn)->is($this->namespace . '*')) {
                 $this->foundClasses[realpath($file)] = $fqcn;
             }
         }
     }
-    
+
     /**
      * Searches the composer PSR-x class maps.
      *
      * Results are added to the `$foundClasses` array.
-     * 
+     *
      * @return void
      */
     protected function searchPsrMaps()
     {
-        $prefixes = array_merge
-        (
+        $prefixes = array_merge(
             $this->composer->getPrefixes(),
             $this->composer->getPrefixesPsr4()
         );
@@ -181,32 +190,28 @@ class ClassFinder implements IClassFinder
 
         $nsSegments = $trimmedNs->split('\\');
 
-        foreach ($prefixes as $ns => $dirs)
-        {
+        foreach ($prefixes as $ns => $dirs) {
             $foundSegments = Str::s($ns)->trimRight('\\')
-            ->longestCommonPrefix($trimmedNs)->split('\\');
+                ->longestCommonPrefix($trimmedNs)->split('\\')
+            ;
 
-            foreach ($foundSegments as $key => $segment)
-            {
-                if ((string) $nsSegments[$key] !== (string) $segment)
-                {
+            foreach ($foundSegments as $key => $segment) {
+                if ((string)$nsSegments[$key] !== (string)$segment) {
                     continue 2;
                 }
             }
 
-            foreach ($dirs as $dir)
-            {
-                foreach ((new Finder)->in($dir)->files()->name('*.php') as $file)
-                {
-                    if ($file instanceof SplFileInfo)
-                    {
+            foreach ($dirs as $dir) {
+                $finder = new Finder;
+                foreach ($finder->in($dir)->files()->name('*.php') as $file) {
+                    if ($file instanceof SplFileInfo) {
                         $fqcn = (string)Str::s($file->getRelativePathname())
-                        ->trimRight('.php')
-                        ->replace('/', '\\')
-                        ->ensureLeft($ns);
+                            ->trimRight('.php')
+                            ->replace('/', '\\')
+                            ->ensureLeft($ns)
+                        ;
 
-                        if (Str::s($fqcn)->is($this->namespace.'*'))
-                        {
+                        if (Str::s($fqcn)->is($this->namespace . '*')) {
                             $this->foundClasses[$file->getRealPath()] = $fqcn;
                         }
                     }
@@ -214,65 +219,58 @@ class ClassFinder implements IClassFinder
             }
         }
     }
-    
+
     /**
      * Runs a filter over the array of `$foundCLasses`.
      *
      * Also ensures the classes are real by creating a ReflectionClass instance.
      * By default we use the `defaultFilter` method.
-     * 
+     *
      * @return void
      */
     protected function runFilter()
     {
-        foreach ($this->foundClasses as $file => $fqcn)
-        {
-            try
-            {
+        foreach ($this->foundClasses as $file => $fqcn) {
+            try {
                 $rClass = new ReflectionClass($fqcn);
-            }
-            catch (ReflectionException $e)
-            {
+
+                if ($this->filter === null) {
+                    $result = $this->defaultFilter($rClass);
+                } else {
+                    $result = call_user_func($this->filter, $rClass);
+                }
+            } catch (ReflectionException $e) {
                 $result = false;
             }
 
-            if ($this->filter === null)
-            {
-                $result = $this->defaultFilter($rClass);
-            }
-            else
-            {
-                $result = call_user_func($this->filter, $rClass);
-            }
-
-            if ($result === false)
-            {
+            if ($result === false) {
                 unset($this->foundClasses[$file]);
             }
         }
     }
-    
+
     /**
      * The default filter run by `runFilter()`.
-     * 
+     *
      * Further filters by  interface or parent class and also filters
      * out actual Interfaces, Abstract Classes and Traits.
-     * 
+     *
      * @param  ReflectionClass $rClass
+     *
      * @return bool
      */
     protected function defaultFilter(ReflectionClass $rClass)
     {
-        if ($this->implements !== null)
-        {
-            return $rClass->implementsInterface($this->implements) && !$rClass->isInterface();
+        $matches = true;
+
+        foreach ($this->implements as $implements) {
+            $matches = $matches && $rClass->implementsInterface($implements) && !$rClass->isInterface();
         }
 
-        if ($this->extends !== null)
-        {
-            return $rClass->isSubclassOf($this->extends) && !$rClass->isAbstract();
+        foreach ($this->extends as $extends) {
+            $matches = $matches && $rClass->isSubclassOf($extends) && !$rClass->isAbstract();
         }
 
-        return (!$rClass->isInterface() && !$rClass->isAbstract() && !$rClass->isTrait());
+        return $matches && (!$rClass->isInterface() && !$rClass->isAbstract() && !$rClass->isTrait());
     }
 }
